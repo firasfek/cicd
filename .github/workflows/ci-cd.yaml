@@ -95,12 +95,8 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Deploy to Minikube
-        run: |
-          kubectl set image deployment/rest-api-deployment \
-            rest-api=ghcr.io/${{ github.repository }}/my-rest-api:latest \
-            -n production
+        run: kubectl set image deployment/rest-api-deployment rest-api=ghcr.io/firasfek/cicd/my-rest-api:latest
 
-          kubectl rollout status deployment/rest-api-deployment -n production
 
 
       - name: Verify deployment
