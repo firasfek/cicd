@@ -87,26 +87,21 @@ jobs:
   # =========================
   deploy:
     needs: build
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     if: github.ref == 'refs/heads/main'
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Configure kubectl
-        uses: azure/k8s-set-context@v3
-        with:
-          method: kubeconfig
-          kubeconfig: ${{ secrets.KUBE_CONFIG }}
-
-      - name: Deploy to Kubernetes
+      - name: Deploy to Minikube
         run: |
           kubectl set image deployment/rest-api-deployment \
-            rest-api=${{ env.DOCKER_REGISTRY }}/${{ github.repository }}/${{ env.DOCKER_IMAGE }}:${{ github.sha }} \
-            -n ${{ env.K8S_NAMESPACE }}
+            rest-api=ghcr.io/${{ github.repository }}/my-rest-api:latest \
+            -n production
 
-          kubectl rollout status deployment/rest-api-deployment -n ${{ env.K8S_NAMESPACE }}
+          kubectl rollout status deployment/rest-api-deployment -n production
+
 
       - name: Verify deployment
         run: |
