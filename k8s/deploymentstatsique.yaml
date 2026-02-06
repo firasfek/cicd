@@ -1,0 +1,23 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rest-api-deployment   # Nom du Deployment
+  labels:
+    app: rest-api             # Label du Deployment
+spec:
+  replicas: 3                 # Nombre de pods souhaités
+  selector:
+    matchLabels:
+      app: rest-api           # Correspond aux labels des pods à gérer
+  template:
+    metadata:
+      labels:
+        app: rest-api         # Label attribué aux pods créés par ce Deployment
+    spec:
+      containers:
+        - name: rest-api       # Nom du container dans le pod
+          image: apistatique:latest
+          imagePullPolicy: Never  # Utiliser l’image locale pour Minikube
+          ports:
+            - containerPort: 3000
+
