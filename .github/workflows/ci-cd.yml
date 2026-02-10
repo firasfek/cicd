@@ -34,14 +34,14 @@ jobs:
 
       - name: 🔍 Run linter (ESLint)
         run: npm run lint
-        continue-on-error: true
+        continue-on-error: true  # Ne pas bloquer si warnings
 
       - name: ✅ Validate package.json
         run: npm ls --depth=0
 
       - name: 🔒 Security audit
         run: npm audit --audit-level=high
-        continue-on-error: true
+        continue-on-error: true  # Ne pas bloquer sur vulnérabilités mineures
 
   # =========================
   # Job 2: Build & Push Docker Image
@@ -104,63 +104,37 @@ jobs:
       - name: 📥 Checkout code
         uses: actions/checkout@v3
 
-      - name: 🔍 Verify kubectl installation
-        shell: pwsh
-        run: |
-          Write-Host "Checking kubectl version..."
-          kubectl version --client
-
       - name: 🔄 Update Kubernetes deployment
-        shell: pwsh
-        run: |
-          $IMAGE_NAME = "${{ env.DOCKER_REGISTRY }}/${{ github.repository_owner }}/${{ env.DOCKER_IMAGE }}:main-${{ github.sha }}"
-          Write-Host "Updating deployment with image: $IMAGE_NAME"
-          
-          kubectl set image deployment/rest-api-deployment `
-            rest-api=$IMAGE_NAME `
-            -n ${{ env.K8S_NAMESPACE }}
+        run: kubectl set image deployment/rest-api-deployment rest-api=${{ env.DOCKER_REGISTRY }}/${{ github.repository_owner }}/${{ env.DOCKER_IMAGE }}:main-${{ github.sha }} -n ${{ env.K8S_NAMESPACE }}
+
 
       - name: ⏳ Wait for rollout to complete
-        shell: pwsh
         run: |
-          Write-Host "Waiting for rollout to complete..."
-          kubectl rollout status deployment/rest-api-deployment `
-            -n ${{ env.K8S_NAMESPACE }} `
-            --timeout=5m
+          kubectl rollout status deployment/rest-api-deployment  -n ${{ env.K8S_NAMESPACE }} --timeout=5m
 
       - name: ✅ Verify deployment
-        shell: pwsh
         run: |
-          Write-Host "📊 Current pods status:"
+          echo "📊 Current pods status:"
           kubectl get pods -n ${{ env.K8S_NAMESPACE }} -l app=rest-api
-          
-          Write-Host ""
-          Write-Host "🌐 Services:"
+          echo ""
+          echo "🌐 Services:"
           kubectl get services -n ${{ env.K8S_NAMESPACE }}
-          
-          Write-Host ""
-          Write-Host "🔍 Deployment image:"
-          kubectl describe deployment rest-api-deployment -n ${{ env.K8S_NAMESPACE }} | Select-String "Image"
+          echo ""
+          echo "🔍 Deployment details:"
+          kubectl describe deployment rest-api-deployment -n ${{ env.K8S_NAMESPACE }} | grep Image
 
       - name: 🧪 Health check
-        shell: pwsh
         run: |
-          Write-Host "Waiting for pods to be ready..."
-          Start-Sleep -Seconds 15
+          # Attendre que le service soit prêt
+          sleep 10
           
-          Write-Host "Getting service URL..."
-          $SERVICE_URL = minikube service rest-api-service --url -n ${{ env.K8S_NAMESPACE }}
+          # Obtenir l'URL du service
+          SERVICE_URL=$(minikube service rest-api-service --url -n ${{ env.K8S_NAMESPACE }})
           
-          Write-Host "Testing health endpoint: $SERVICE_URL/health"
-          $response = Invoke-WebRequest -Uri "$SERVICE_URL/health" -UseBasicParsing
+          # Tester le endpoint /health
+          curl -f $SERVICE_URL/health || exit 1
           
-          if ($response.StatusCode -eq 200) {
-            Write-Host "✅ Health check passed!"
-            Write-Host $response.Content
-          } else {
-            Write-Host "❌ Health check failed!"
-            exit 1
-          }
+          echo "✅ Health check passed!"
 
   # =========================
   # Job 4: Notify Results
