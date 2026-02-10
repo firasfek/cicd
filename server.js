@@ -164,6 +164,16 @@ app.put('/api/users/:id', async (req, res) => {
   }
 });
 
+
+
+
+app.get('/version', (req, res) => {
+  res.json({ version: '2.0.0', message: 'CI/CD works!' });
+});
+
+
+
+
 // DELETE - Remove a user
 app.delete('/api/users/:id', async (req, res) => {
   if (!pool || !dbConnected) {
