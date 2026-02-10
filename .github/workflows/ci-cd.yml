@@ -51,7 +51,7 @@ jobs:
     runs-on: ubuntu-latest
     name: 🐳 Build Docker Image
     outputs:
-      image-tag: ${{ steps.meta.outputs.version }}
+      image-tag: ${{ steps.image-info.outputs.tag }}
 
     steps:
       - name: 📥 Checkout code
@@ -86,6 +86,14 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      - name: 📦 Extract image tag for deploy  # ✅ NOUVEAU STEP
+        id: image-info
+        run: |
+          # Extraire le premier tag (celui avec le SHA)
+          FIRST_TAG=$(echo "${{ steps.meta.outputs.tags }}" | head -n1)
+          echo "tag=$FIRST_TAG" >> $GITHUB_OUTPUT
+          echo "✅ Image built: $FIRST_TAG"
+
       - name: ✅ Image built successfully
         run: |
           echo "🎉 Docker image pushed successfully!"
@@ -105,7 +113,7 @@ jobs:
         uses: actions/checkout@v3
 
       - name: 🔄 Update Kubernetes deployment
-        run: kubectl set image deployment/rest-api-deployment rest-api=${{ env.DOCKER_REGISTRY }}/${{ github.repository_owner }}/${{ env.DOCKER_IMAGE }}:main-${{ steps.vars.outputs.SHORT_SHA }}-n ${{ env.K8S_NAMESPACE }}
+        run: kubectl set image deployment/rest-api-deployment rest-api=${{ needs.build.outputs.image-tag }} -n ${{ env.K8S_NAMESPACE }}
 
 
       - name: ⏳ Wait for rollout to complete
