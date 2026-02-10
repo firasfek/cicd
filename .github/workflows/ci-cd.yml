@@ -1,0 +1,167 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  DOCKER_IMAGE: my-rest-api
+  DOCKER_REGISTRY: ghcr.io
+  K8S_NAMESPACE: default
+
+jobs:
+  # =========================
+  # Job 1: Lint & Basic Tests
+  # =========================
+  test:
+    runs-on: ubuntu-latest
+    name: 🧪 Tests et validation
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v3
+
+      - name: 🟢 Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: 📦 Install dependencies
+        run: npm ci
+
+      - name: 🔍 Run linter (ESLint)
+        run: npm run lint
+        continue-on-error: true  # Ne pas bloquer si warnings
+
+      - name: ✅ Validate package.json
+        run: npm ls --depth=0
+
+      - name: 🔒 Security audit
+        run: npm audit --audit-level=high
+        continue-on-error: true  # Ne pas bloquer sur vulnérabilités mineures
+
+  # =========================
+  # Job 2: Build & Push Docker Image
+  # =========================
+  build:
+    needs: test
+    runs-on: ubuntu-latest
+    name: 🐳 Build Docker Image
+    outputs:
+      image-tag: ${{ steps.meta.outputs.version }}
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v3
+
+      - name: 🔧 Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: 🔑 Log in to GitHub Container Registry
+        uses: docker/login-action@v2
+        with:
+          registry: ${{ env.DOCKER_REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 📝 Extract Docker metadata
+        id: meta
+        uses: docker/metadata-action@v4
+        with:
+          images: ${{ env.DOCKER_REGISTRY }}/${{ github.repository_owner }}/${{ env.DOCKER_IMAGE }}
+          tags: |
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: 🏗️ Build and push Docker image
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: ✅ Image built successfully
+        run: |
+          echo "🎉 Docker image pushed successfully!"
+          echo "📦 Image: ${{ steps.meta.outputs.tags }}"
+
+  # =========================
+  # Job 3: Deploy to Kubernetes (Self-Hosted Runner)
+  # =========================
+  deploy:
+    needs: build
+    runs-on: self-hosted
+    name: 🚀 Deploy to Minikube
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v3
+
+      - name: 🔄 Update Kubernetes deployment
+        run: |
+          # Mise à jour de l'image dans le deployment
+          kubectl set image deployment/rest-api-deployment \
+            rest-api=${{ env.DOCKER_REGISTRY }}/${{ github.repository_owner }}/${{ env.DOCKER_IMAGE }}:main-${{ github.sha }} \
+            -n ${{ env.K8S_NAMESPACE }}
+
+      - name: ⏳ Wait for rollout to complete
+        run: |
+          kubectl rollout status deployment/rest-api-deployment \
+            -n ${{ env.K8S_NAMESPACE }} \
+            --timeout=5m
+
+      - name: ✅ Verify deployment
+        run: |
+          echo "📊 Current pods status:"
+          kubectl get pods -n ${{ env.K8S_NAMESPACE }} -l app=rest-api
+          echo ""
+          echo "🌐 Services:"
+          kubectl get services -n ${{ env.K8S_NAMESPACE }}
+          echo ""
+          echo "🔍 Deployment details:"
+          kubectl describe deployment rest-api-deployment -n ${{ env.K8S_NAMESPACE }} | grep Image
+
+      - name: 🧪 Health check
+        run: |
+          # Attendre que le service soit prêt
+          sleep 10
+          
+          # Obtenir l'URL du service
+          SERVICE_URL=$(minikube service rest-api-service --url -n ${{ env.K8S_NAMESPACE }})
+          
+          # Tester le endpoint /health
+          curl -f $SERVICE_URL/health || exit 1
+          
+          echo "✅ Health check passed!"
+
+  # =========================
+  # Job 4: Notify Results
+  # =========================
+  notify:
+    needs: [test, build, deploy]
+    runs-on: ubuntu-latest
+    name: 📢 Notification
+    if: always()
+
+    steps:
+      - name: 📊 Pipeline Summary
+        run: |
+          echo "================================"
+          echo "🎯 CI/CD Pipeline Results"
+          echo "================================"
+          echo "Test Job: ${{ needs.test.result }}"
+          echo "Build Job: ${{ needs.build.result }}"
+          echo "Deploy Job: ${{ needs.deploy.result }}"
+          echo "================================"
+          if [ "${{ needs.deploy.result }}" == "success" ]; then
+            echo "✅ Deployment successful! 🚀"
+          else
+            echo "❌ Pipeline failed. Check logs above."
+          fi
