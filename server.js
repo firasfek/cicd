@@ -180,6 +180,11 @@ app.get('/version3', (req, res) => {
   res.json({ version: '2.555', message: 'CI/CD works00555550!' });
 });
 
+app.get('/version4', (req, res) => {
+  res.json({ version: '2.5544445', message: 'CI/CD w44orks00555550!' });
+});
+
+
 
 
 // DELETE - Remove a user
