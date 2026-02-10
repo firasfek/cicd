@@ -114,7 +114,6 @@ jobs:
 
       - name: 🔄 Update Kubernetes deployment
         run: kubectl set image deployment/rest-api-deployment rest-api=${{ needs.build.outputs.image-tag }} -n ${{ env.K8S_NAMESPACE }}
-                kubectl rollout restart deployment/rest-api-deployment -n ${{ env.K8S_NAMESPACE }}
 
 
       - name: ⏳ Wait for rollout to complete
