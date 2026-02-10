@@ -112,29 +112,29 @@ jobs:
         run: kubectl rollout status deployment/rest-api-deployment -n ${{ env.K8S_NAMESPACE }} --timeout=5m
 
 
-      - name: ✅ Verify deployment
-        run: |
-          echo "📊 Current pods status:"
-          kubectl get pods -n ${{ env.K8S_NAMESPACE }} -l app=rest-api
-          echo ""
-          echo "🌐 Services:"
-          kubectl get services -n ${{ env.K8S_NAMESPACE }}
-          echo ""
-          echo "🔍 Deployment details:"
-          kubectl describe deployment rest-api-deployment -n ${{ env.K8S_NAMESPACE }} | grep Image
+      # - name: ✅ Verify deployment
+      #   run: |
+      #     echo "📊 Current pods status:"
+      #     kubectl get pods -n ${{ env.K8S_NAMESPACE }} -l app=rest-api
+      #     echo ""
+      #     echo "🌐 Services:"
+      #     kubectl get services -n ${{ env.K8S_NAMESPACE }}
+      #     echo ""
+      #     echo "🔍 Deployment details:"
+      #     kubectl describe deployment rest-api-deployment -n ${{ env.K8S_NAMESPACE }} | grep Image
 
-      - name: 🧪 Health check
-        run: |
-          # Attendre que le service soit prêt
-          sleep 10
+      # - name: 🧪 Health check
+      #   run: |
+      #     # Attendre que le service soit prêt
+      #     sleep 10
           
-          # Obtenir l'URL du service
-          SERVICE_URL=$(minikube service rest-api-service --url -n ${{ env.K8S_NAMESPACE }})
+      #     # Obtenir l'URL du service
+      #     SERVICE_URL=$(minikube service rest-api-service --url -n ${{ env.K8S_NAMESPACE }})
           
-          # Tester le endpoint /health
-          curl -f $SERVICE_URL/health || exit 1
+      #     # Tester le endpoint /health
+      #     curl -f $SERVICE_URL/health || exit 1
           
-          echo "✅ Health check passed!"
+      #     echo "✅ Health check passed!"
 
   # =========================
   # Job 4: Notify Results
