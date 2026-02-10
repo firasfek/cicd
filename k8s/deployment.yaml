@@ -16,8 +16,8 @@ spec:
     spec:
       containers:
         - name: rest-api
-          image: my-rest-api:v2
-          imagePullPolicy: Never   # IMPORTANT pour Minikube
+          image: ghcr.io/firasfek/my-rest-api:latest
+          imagePullPolicy: Always
           ports:
             - containerPort: 3000
           envFrom:
