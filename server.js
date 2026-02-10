@@ -172,6 +172,10 @@ app.get('/version', (req, res) => {
 });
 
 
+app.get('/version2', (req, res) => {
+  res.json({ version: '2.0.000000', message: 'CI/CD works000000!' });
+});
+
 
 
 // DELETE - Remove a user
