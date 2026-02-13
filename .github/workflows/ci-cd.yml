@@ -116,11 +116,13 @@ jobs:
       - name: 📥 Checkout code
         uses: actions/checkout@v3
 
-      - name: 🔄 Update Kubernetes deployment
+      # - name: 🔄 Update Kubernetes deployment
         # run: kubectl set image deployment/rest-api-deployment rest-api=${{ needs.build.outputs.image-tag }} -n ${{ env.K8S_NAMESPACE }}
-        run: 
-          kubectl set image deployment/rest-api-deployment rest-api=${{ env.DOCKER_REGISTRY }}/${{ github.repository }}/${{ env.DOCKER_IMAGE }}:${{ github.sha }} -n ${{ env.K8S_NAMESPACE }}
-          kubectl rollout status deployment/rest-api-deployment -n ${{ env.K8S_NAMESPACE }}
+      - name: 🔄 Update Kubernetes deployment
+        run: |
+          kubectl set image deployment/rest-api-deployment rest-api=${{ env.DOCKER_REGISTRY }}/${{ github.repository_owner }}/${{ env.DOCKER_IMAGE }}:${{ github.sha }} -n ${{ env.K8S_NAMESPACE }}
+          kubectl rollout status deployment/rest-api-deployment -n ${{ env.K8S_NAMESPACE }} --timeout=5m 
+
 
 
       - name: ⏳ Wait for rollout to complete
